@@ -3,8 +3,9 @@ services:
     build: ./backend
     ports:
       - "8000:8000"
-    environment:
-      - CORS_ORIGINS=http://localhost:5173,http://localhost
+    # Not required maybe its already defined in the backend
+    # environment:
+    #   - CORS_ORIGINS=["http://localhost:5173","http://localhost"]
     networks:
       - chatbot-network
 
@@ -17,13 +18,19 @@ services:
     networks:
       - chatbot-network
 
-  # Future services (Phase 2 & 3)
   ollama:
     image: ollama/ollama:latest
     ports:
       - "11434:11434"
     volumes:
-      - ollama_data:/root/.ollama
+      - ~/.ollama:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
     networks:
       - chatbot-network
 
@@ -38,6 +45,3 @@ services:
 networks:
   chatbot-network:
     driver: bridge
-
-volumes:
-  ollama_data:
