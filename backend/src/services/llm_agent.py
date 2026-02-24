@@ -1,11 +1,7 @@
-from pydantic_ai.providers.ollama import OllamaProvider
-from pydantic_ai.models.openai import OpenAIChatModel
-import asyncio
 import uuid
-import json
-from openai import AsyncOpenAI
-from pydantic_ai import Agent, RunContext
-from pydantic_ai.models.openai import OpenAIModel
+from pydantic_ai.models.openai import OpenAIChatModel
+from pydantic_ai.providers.ollama import OllamaProvider
+from pydantic_ai import Agent
 from src.models.chat import StartEvent, TokenEvent, EndEvent, ErrorEvent
 from src.core.config import settings
 
@@ -21,6 +17,7 @@ ollama_model = OpenAIChatModel(
 agent = Agent(
     model=ollama_model,
     system_prompt="You are a helpful AI assistant. Provide concise and accurate answers."
+    
 )
 
 async def stream_llm_response(prompt: str):
