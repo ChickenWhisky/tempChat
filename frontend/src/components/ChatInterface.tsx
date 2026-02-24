@@ -95,11 +95,11 @@ export const ChatInterface: React.FC = () => {
     };
 
     return (
-        <Card className="flex flex-col h-screen max-w-4xl mx-auto rounded-none border-y-0 sm:border-y sm:rounded-xl sm:h-[calc(100vh-2rem)] sm:my-4 shadow-xl">
+        <Card className="flex flex-col h-screen w-full rounded-none border-0 shadow-none">
             {/* Header */}
-            <CardHeader className="p-4 border-b flex flex-row justify-between items-center sticky top-0 z-10 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60 dark:bg-slate-950/95">
+            <CardHeader className="p-4 border-b flex flex-row justify-between items-center sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
                 <CardTitle className="text-xl font-bold flex items-center gap-2">
-                    <Bot className="w-5 h-5 text-blue-600" />
+                    <Bot className="w-5 h-5 text-primary" />
                     AI Chatbot
                 </CardTitle>
                 <div className="text-xs flex items-center gap-2 text-slate-500 font-medium">
@@ -116,10 +116,10 @@ export const ChatInterface: React.FC = () => {
                 <ScrollArea ref={scrollRef} className="h-full">
                     {messages.length === 0 ? (
                         <div className="flex flex-col items-center justify-center h-full min-h-[400px] opacity-60 space-y-4">
-                            <div className="p-4 rounded-full bg-slate-100 dark:bg-slate-800 ring-1 ring-slate-200 dark:ring-slate-700">
-                               <Bot size={48} className="text-blue-500" />
+                            <div className="p-4 rounded-full bg-muted ring-1 ring-border">
+                               <Bot size={48} className="text-primary" />
                             </div>
-                            <p className="text-slate-600 dark:text-slate-400 font-medium">Start a conversation with the AI</p>
+                            <p className="text-muted-foreground font-medium">Start a conversation with the AI</p>
                         </div>
                     ) : (
                         <div className="space-y-px py-4">
@@ -130,7 +130,7 @@ export const ChatInterface: React.FC = () => {
             </CardContent>
 
             {/* Input */}
-            <CardFooter className="p-4 border-t bg-slate-50/50 dark:bg-slate-950/50 flex flex-col gap-2">
+            <CardFooter className="p-4 border-t bg-muted/50 flex flex-col gap-2">
                 <div className="relative flex items-center w-full">
                     <Input
                         type="text"
