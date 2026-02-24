@@ -1,0 +1,36 @@
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+env/
+venv/
+ENV/
+build/
+dist/
+*.egg-info/
+.python-version
+
+# Node.js / Frontend
+node_modules/
+/frontend/dist/
+/frontend/build/
+.npm
+.eslintcache
+
+# Project specific
+backend/.venv/
+backend/__pycache__/
+
+# IDEs
+.vscode/
+.idea/
+
+# OS specific
+.DS_Store
+Thumbs.db
