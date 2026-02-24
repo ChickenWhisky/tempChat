@@ -1,11 +1,6 @@
-# syntax=docker/dockerfile:1
-
-FROM ghcr.io/astral-sh/uv:python3.13-bookworm-slim
+FROM astral/uv:python3.13-bookworm-slim
 
 WORKDIR /app
-
-# Enable bytecode compilation
-ENV UV_COMPILE_BYTECODE=1
 
 # Copy from the context
 COPY pyproject.toml uv.lock ./
