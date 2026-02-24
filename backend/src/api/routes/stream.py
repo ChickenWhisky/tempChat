@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
-from ..models.chat import ChatRequest
-from ..services.fake_generator import generate_fake_tokens
+from src.models.chat import ChatRequest
+from src.services.llm_agent import stream_llm_response
 
 router = APIRouter()
 
@@ -12,6 +12,6 @@ async def chat_stream(request: ChatRequest):
     """
     # Use FastAPI's StreamingResponse with the correct media type for SSE
     return StreamingResponse(
-        generate_fake_tokens(request.message),
+        stream_llm_response(request.message),
         media_type="text/event-stream"
     )

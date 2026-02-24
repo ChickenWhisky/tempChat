@@ -1,7 +1,7 @@
 import asyncio
 import uuid
 import json
-from ..models.chat import StartEvent, TokenEvent, EndEvent, ErrorEvent
+from src.models.chat import StartEvent, TokenEvent, EndEvent, ErrorEvent
 
 async def generate_fake_tokens(prompt: str):
     """
