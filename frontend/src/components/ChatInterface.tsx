@@ -1,8 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import type { ChatMessage, StreamEvent } from '../types/chat';
 import { MessageItem } from './MessageItem';
-import { Send, Loader2,Bot} from 'lucide-react';
+import { Send, Loader2, Bot } from 'lucide-react';
 import { fetchEventSource } from '@microsoft/fetch-event-source';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 
 export const ChatInterface: React.FC = () => {
     const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -13,7 +17,10 @@ export const ChatInterface: React.FC = () => {
     // Auto-scroll to bottom on new messages
     useEffect(() => {
         if (scrollRef.current) {
-            scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+            const scrollContainer = scrollRef.current.querySelector('[data-radix-scroll-area-viewport]');
+            if (scrollContainer) {
+                 scrollContainer.scrollTop = scrollContainer.scrollHeight;
+            }
         }
     }, [messages]);
 
@@ -88,53 +95,61 @@ export const ChatInterface: React.FC = () => {
     };
 
     return (
-        <div className="flex flex-col h-screen max-w-4xl mx-auto border-x bg-white dark:bg-slate-950">
+        <Card className="flex flex-col h-screen max-w-4xl mx-auto rounded-none border-y-0 sm:border-y sm:rounded-xl sm:h-[calc(100vh-2rem)] sm:my-4 shadow-xl">
             {/* Header */}
-            <header className="p-4 border-b flex justify-between items-center bg-white dark:bg-slate-900 sticky top-0 z-10">
-                <h1 className="text-xl font-bold text-slate-800 dark:text-white">AI Chatbot</h1>
-                <div className="text-xs flex items-center gap-2 text-slate-500">
-                    <span className="w-2 h-2 rounded-full bg-green-500"></span>
-                    Connected to Backend
+            <CardHeader className="p-4 border-b flex flex-row justify-between items-center sticky top-0 z-10 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60 dark:bg-slate-950/95">
+                <CardTitle className="text-xl font-bold flex items-center gap-2">
+                    <Bot className="w-5 h-5 text-blue-600" />
+                    AI Chatbot
+                </CardTitle>
+                <div className="text-xs flex items-center gap-2 text-slate-500 font-medium">
+                    <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                    </span>
+                    Connected
                 </div>
-            </header>
+            </CardHeader>
 
             {/* Messages */}
-            <div ref={scrollRef} className="flex-1 overflow-y-auto space-y-1 py-4 scroll-smooth">
-                {messages.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-full opacity-50 space-y-4">
-                        <div className="p-4 rounded-full bg-slate-100 dark:bg-slate-800">
-                           <Bot size={48} className="text-blue-500" />
+            <CardContent className="flex-1 p-0 overflow-hidden">
+                <ScrollArea ref={scrollRef} className="h-full">
+                    {messages.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center h-full min-h-[400px] opacity-60 space-y-4">
+                            <div className="p-4 rounded-full bg-slate-100 dark:bg-slate-800 ring-1 ring-slate-200 dark:ring-slate-700">
+                               <Bot size={48} className="text-blue-500" />
+                            </div>
+                            <p className="text-slate-600 dark:text-slate-400 font-medium">Start a conversation with the AI</p>
                         </div>
-                        <p className="text-slate-600 dark:text-slate-400 font-medium">Start a conversation with the AI</p>
-                    </div>
-                ) : (
-                    messages.map(m => <MessageItem key={m.id} message={m} />)
-                )}
-            </div>
+                    ) : (
+                        <div className="space-y-px py-4">
+                            {messages.map(m => <MessageItem key={m.id} message={m} />)}
+                        </div>
+                    )}
+                </ScrollArea>
+            </CardContent>
 
             {/* Input */}
-            <div className="p-4 border-t bg-slate-50 dark:bg-slate-900">
-                <div className="relative flex items-center">
-                    <input
+            <CardFooter className="p-4 border-t bg-slate-50/50 dark:bg-slate-950/50 flex flex-col gap-2">
+                <div className="relative flex items-center w-full">
+                    <Input
                         type="text"
                         placeholder="Type your message..."
-                        className="w-full p-3 pr-12 rounded-lg border focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 dark:border-slate-700 dark:text-white"
+                        className="pr-12 h-12 text-base rounded-xl"
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
                     />
-                    <button
+                    <Button
                         onClick={handleSendMessage}
                         disabled={isLoading || !input.trim()}
-                        className="absolute right-2 p-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        size="icon"
+                        className="absolute right-1.5 h-9 w-9 rounded-lg"
                     >
-                        {isLoading ? <Loader2 className="animate-spin" size={20} /> : <Send size={20} />}
-                    </button>
+                        {isLoading ? <Loader2 className="animate-spin" size={18} /> : <Send size={18} />}
+                    </Button>
                 </div>
-                <p className="mt-2 text-[10px] text-center text-slate-400">
-                    Phase 1: Basic Streaming without Temporal
-                </p>
-            </div>
-        </div>
+            </CardFooter>
+        </Card>
     );
 };

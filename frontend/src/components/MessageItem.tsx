@@ -1,12 +1,8 @@
 import React from 'react';
 import type { ChatMessage } from '../types/chat';
 import { Bot, User } from 'lucide-react';
-import { clsx, type ClassValue } from 'clsx';
-import { twMerge } from 'tailwind-merge';
-
-function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
+import { cn } from '@/lib/utils';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
 interface MessageItemProps {
   message: ChatMessage;
@@ -20,12 +16,15 @@ export const MessageItem: React.FC<MessageItemProps> = ({ message }) => {
       "flex w-full gap-4 p-4",
       isAssistant ? "bg-slate-50 dark:bg-slate-900" : "bg-white dark:bg-slate-950"
     )}>
-      <div className={cn(
-        "flex h-8 w-8 shrink-0 select-none items-center justify-center rounded-md border shadow",
-        isAssistant ? "bg-blue-600 text-white" : "bg-slate-200 text-slate-700"
+      <Avatar className={cn(
+        "h-8 w-8 border shadow",
+        isAssistant ? "bg-blue-600 text-white" : "bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300"
       )}>
-        {isAssistant ? <Bot size={18} /> : <User size={18} />}
-      </div>
+        <AvatarFallback className="bg-transparent">
+          {isAssistant ? <Bot size={18} /> : <User size={18} />}
+        </AvatarFallback>
+      </Avatar>
+      
       <div className="flex-1 space-y-2 overflow-hidden">
         <p className="text-sm font-medium text-slate-500">
           {isAssistant ? "Assistant" : "You"}
@@ -43,3 +42,4 @@ export const MessageItem: React.FC<MessageItemProps> = ({ message }) => {
     </div>
   );
 };
+
