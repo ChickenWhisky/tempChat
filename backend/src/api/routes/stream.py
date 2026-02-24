@@ -46,22 +46,38 @@ async def simulate_streaming_response(message: str):
 
             if get_task in done:
                 chunk = get_task.result()
+                print(
+                    f"DEBUG stream.py: get_task done, yielding chunk: {chunk[:30]}..."
+                )
                 yield chunk
             else:
                 get_task.cancel()
+                print(
+                    f"DEBUG stream.py: get_task NOT done, but workflow finished. Queue size: {queue.qsize()}"
+                )
                 # Empty remaining queue
                 while not queue.empty():
-                    yield queue.get_nowait()
+                    chunk = queue.get_nowait()
+                    print(f"DEBUG stream.py: yielding remaining chunk: {chunk[:30]}...")
+                    yield chunk
                 break
 
             if workflow_task in done:
                 get_task.cancel()
+                print(
+                    f"DEBUG stream.py: workflow_task done. Queue size: {queue.qsize()}"
+                )
                 while not queue.empty():
-                    yield queue.get_nowait()
+                    chunk = queue.get_nowait()
+                    print(
+                        f"DEBUG stream.py: yielding remaining chunk (from workflow done): {chunk[:30]}..."
+                    )
+                    yield chunk
                 break
 
         # Wait for actual result to ensure any workflow exceptions bubble up
         await workflow_task
+        print(f"DEBUG stream.py: workflow_task completed successfully.")
 
         # Send end event
         end_event = EndEvent(message_id=msg_id)
