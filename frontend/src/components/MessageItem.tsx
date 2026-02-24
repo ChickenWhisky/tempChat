@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChatMessage } from '../types/chat';
+import type { ChatMessage } from '../types/chat';
 import { Bot, User } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';

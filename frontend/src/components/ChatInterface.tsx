@@ -32,8 +32,7 @@ export const ChatInterface: React.FC = () => {
         setInput('');
         setIsLoading(true);
 
-        // Placeholder for assistant message
-        const assistantMsgId = crypto.randomUUID();
+        // Placeholder for assistant message content
         let currentAssistantContent = "";
 
         try {
