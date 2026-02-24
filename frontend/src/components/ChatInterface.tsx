@@ -9,7 +9,37 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 
 export const ChatInterface: React.FC = () => {
-    const [messages, setMessages] = useState<ChatMessage[]>([]);
+    const [messages, setMessages] = useState<ChatMessage[]>(() => {
+        const saved = localStorage.getItem('chatMessages');
+        if (saved) {
+            try {
+                const parsed = JSON.parse(saved) as ChatMessage[];
+                const validMessages: ChatMessage[] = [];
+                
+                for (const m of parsed) {
+                    if (m.status === 'error' || m.status === 'streaming') {
+                        // Remove the preceding user message if it exists
+                        if (validMessages.length > 0 && validMessages[validMessages.length - 1].role === 'user') {
+                            validMessages.pop();
+                        }
+                    } else {
+                        validMessages.push(m);
+                    }
+                }
+                
+                // Also remove any dangling user message at the very end
+                // since it doesn't have an assistant response and won't be retried automatically
+                if (validMessages.length > 0 && validMessages[validMessages.length - 1].role === 'user') {
+                    validMessages.pop();
+                }
+                
+                return validMessages;
+            } catch (e) {
+                console.error('Failed to parse chat messages from local storage', e);
+            }
+        }
+        return [];
+    });
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
@@ -22,6 +52,11 @@ export const ChatInterface: React.FC = () => {
                  scrollContainer.scrollTop = scrollContainer.scrollHeight;
             }
         }
+    }, [messages]);
+
+    // Save messages to local storage whenever they change
+    useEffect(() => {
+        localStorage.setItem('chatMessages', JSON.stringify(messages));
     }, [messages]);
 
     const handleSendMessage = async () => {

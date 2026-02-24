@@ -9,7 +9,14 @@ dependencies = [
     "httpx>=0.28.1",
     "openai>=2.23.0",
     "pydantic>=2.12.5",
-    "pydantic-ai>=1.63.0",
+    "pydantic-ai[temporal]>=1.63.0",
     "pydantic-settings>=2.13.1",
+    "temporalio>=1.20.0",
     "uvicorn>=0.41.0",
+]
+
+[dependency-groups]
+dev = [
+    "mypy>=1.19.1",
+    "pyright>=1.1.408",
 ]

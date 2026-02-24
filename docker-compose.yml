@@ -3,11 +3,14 @@ services:
     build: ./backend
     ports:
       - "8000:8000"
-    # Not required maybe its already defined in the backend
+    # Not required its already defined in the backend
     # environment:
     #   - CORS_ORIGINS=["http://localhost:5173","http://localhost"]
     networks:
       - chatbot-network
+    depends_on:
+      temporal:
+        condition: service_healthy
 
   frontend:
     build: ./frontend

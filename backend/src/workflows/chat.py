@@ -1,27 +1,28 @@
-from datetime import timedelta
+from pydantic_ai.messages import ModelMessage
 from temporalio import workflow
-from temporalio.common import RetryPolicy
 
-with workflow.unsafe.imports_passed_through():
-    from src.activities.llm import generate_llm_response_activity
+from src.services.llm_agent import temporal_agent, ChatDeps
+
+
+from pydantic_ai.durable_exec.temporal import PydanticAIWorkflow
+
 
 @workflow.defn
-class ChatWorkflow:
+class ChatWorkflow(PydanticAIWorkflow):
+    __pydantic_ai_agents__ = [temporal_agent]
+
     @workflow.run
-    async def run(self, message: str) -> str:
+    async def run(
+        self,
+        message: str,
+        message_id: str,
+        message_history: list[ModelMessage] | None = None,
+    ) -> str:
         """
-        The deterministic workflow logic. 
-        Executes the non-deterministic LLM activity and durably returns the result.
+        Executes the AI Agent durably.
         """
-        # Set a generous timeout since LLM generation can take time depending on hardware
-        llm_response = await workflow.execute_activity(
-            generate_llm_response_activity,
-            message,
-            start_to_close_timeout=timedelta(minutes=5),
-            retry_policy=RetryPolicy(
-                initial_interval=timedelta(seconds=2),
-                backoff_coefficient=2.0,
-                maximum_attempts=3, # Retry up to 3 times on transient API failures
-            )
-        )
-        return llm_response
+        deps = ChatDeps(message_id=message_id, message_history=message_history)
+
+        # The agent runs durably. Tools become localized Temporal activities automatically.
+        result = await temporal_agent.run(message, deps=deps)
+        return result.output
