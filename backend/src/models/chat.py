@@ -2,14 +2,11 @@ from pydantic import BaseModel
 from typing import Literal
 
 
-from pydantic_ai.messages import ModelMessage
-
-
 # Incoming request model
 class ChatRequest(BaseModel):
     message: str
+    conversation_id: str
     message_id: str | None = None
-    history: list[ModelMessage] | None = None
 
 
 # Outgoing SSE Event models

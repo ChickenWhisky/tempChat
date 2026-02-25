@@ -17,7 +17,7 @@ export const ChatInterface: React.FC = () => {
                 const validMessages: ChatMessage[] = [];
                 
                 for (const m of parsed) {
-                    if (m.status === 'error' || m.status === 'streaming') {
+                    if (m.status === 'error') {
                         // Remove the preceding user message if it exists
                         if (validMessages.length > 0 && validMessages[validMessages.length - 1].role === 'model-request') {
                             validMessages.pop();
@@ -59,6 +59,14 @@ export const ChatInterface: React.FC = () => {
         localStorage.setItem('chatMessages', JSON.stringify(messages));
     }, [messages]);
 
+    const [conversationId] = useState(() => {
+        const saved = localStorage.getItem('conversationId');
+        if (saved) return saved;
+        const newId = crypto.randomUUID();
+        localStorage.setItem('conversationId', newId);
+        return newId;
+    });
+
     const handleSendMessage = async () => {
         if (!input.trim() || isLoading) return;
 
@@ -75,14 +83,6 @@ export const ChatInterface: React.FC = () => {
         setInput('');
         setIsLoading(true);
 
-        // Construct history for context (exclude current user message and any streaming/error messages)
-        const history = messages
-            .filter(m => m.status === 'complete')
-            .map(m => ({
-                role: m.role,
-                parts: m.parts
-            }));
-
         let currentAssistantContent = "";
 
         try {
@@ -95,7 +95,7 @@ export const ChatInterface: React.FC = () => {
                 body: JSON.stringify({ 
                     message: input, 
                     message_id: assistantMsgId,
-                    history: history
+                    conversation_id: conversationId
                 }),
                 onmessage(ev) {
                     console.log("DEBUG ChatInterface: Received event:", ev.data);

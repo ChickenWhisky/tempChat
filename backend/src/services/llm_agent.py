@@ -9,7 +9,7 @@ from pydantic_ai.providers.ollama import OllamaProvider
 
 from src.core.config import settings
 from src.core.pubsub import pubsub_manager
-from src.models.chat import TokenEvent
+from src.models.chat import TokenEvent, EndEvent
 import logging
 
 ollama_model = OpenAIChatModel(
@@ -116,6 +116,11 @@ async def my_event_stream_handler(
                 await pubsub_manager.publish(
                     channel, f"data: {token_event.model_dump_json()}\n\n"
                 )
+
+    # 5. Signal the end of the stream for this turn
+
+    end_event = EndEvent(message_id=channel)
+    await pubsub_manager.publish(channel, f"data: {end_event.model_dump_json()}\n\n")
 
 
 # Upgrade the agent to expect ChatDeps
