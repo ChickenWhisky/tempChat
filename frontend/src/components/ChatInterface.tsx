@@ -19,7 +19,7 @@ export const ChatInterface: React.FC = () => {
                 for (const m of parsed) {
                     if (m.status === 'error' || m.status === 'streaming') {
                         // Remove the preceding user message if it exists
-                        if (validMessages.length > 0 && validMessages[validMessages.length - 1].role === 'user') {
+                        if (validMessages.length > 0 && validMessages[validMessages.length - 1].role === 'model-request') {
                             validMessages.pop();
                         }
                     } else {
@@ -29,7 +29,7 @@ export const ChatInterface: React.FC = () => {
                 
                 // Also remove any dangling user message at the very end
                 // since it doesn't have an assistant response and won't be retried automatically
-                if (validMessages.length > 0 && validMessages[validMessages.length - 1].role === 'user') {
+                if (validMessages.length > 0 && validMessages[validMessages.length - 1].role === 'model-request') {
                     validMessages.pop();
                 }
                 
@@ -66,8 +66,8 @@ export const ChatInterface: React.FC = () => {
         const assistantMsgId = crypto.randomUUID();
         const userMessage: ChatMessage = {
             id: userMsgId,
-            role: 'user',
-            content: input,
+            role: 'model-request',
+            parts: [{ part_kind: 'user-prompt', content: input }],
             status: 'complete'
         };
 
@@ -75,16 +75,28 @@ export const ChatInterface: React.FC = () => {
         setInput('');
         setIsLoading(true);
 
-        // Placeholder for assistant message content
+        // Construct history for context (exclude current user message and any streaming/error messages)
+        const history = messages
+            .filter(m => m.status === 'complete')
+            .map(m => ({
+                role: m.role,
+                parts: m.parts
+            }));
+
         let currentAssistantContent = "";
 
         try {
-            await fetchEventSource('http://localhost:8000/api/chat', {
+            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+            await fetchEventSource(`${apiUrl}/api/chat`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ message: input, message_id: assistantMsgId }),
+                body: JSON.stringify({ 
+                    message: input, 
+                    message_id: assistantMsgId,
+                    history: history
+                }),
                 onmessage(ev) {
                     const data: StreamEvent = JSON.parse(ev.data);
 
@@ -93,8 +105,8 @@ export const ChatInterface: React.FC = () => {
                             if (prev.some(m => m.id === data.message_id)) return prev;
                             return [...prev, {
                                 id: data.message_id,
-                                role: 'assistant',
-                                content: '',
+                                role: 'model-response',
+                                parts: [{ part_kind: 'text', content: '' }],
                                 status: 'streaming'
                             }];
                         });
@@ -102,7 +114,7 @@ export const ChatInterface: React.FC = () => {
                         currentAssistantContent += data.content;
                         setMessages(prev => prev.map(m => 
                             m.id === data.message_id 
-                                ? { ...m, content: currentAssistantContent } 
+                                ? { ...m, parts: [{ part_kind: 'text', content: currentAssistantContent }] } 
                                 : m
                         ));
                     } else if (data.type === 'end') {

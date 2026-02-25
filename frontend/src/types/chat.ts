@@ -1,7 +1,12 @@
+export type ModelMessagePart = 
+  | { part_kind: 'system-prompt'; content: string }
+  | { part_kind: 'user-prompt'; content: string }
+  | { part_kind: 'text'; content: string };
+
 export type ChatMessage = {
   id: string;
-  role: "user" | "assistant";
-  content: string;
+  role: 'model-request' | 'model-response';
+  parts: ModelMessagePart[];
   status: "streaming" | "complete" | "error";
 };
 

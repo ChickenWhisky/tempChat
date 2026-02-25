@@ -9,7 +9,8 @@ interface MessageItemProps {
 }
 
 export const MessageItem: React.FC<MessageItemProps> = ({ message }) => {
-  const isAssistant = message.role === 'assistant';
+  const isAssistant = message.role === 'model-response';
+  const content = message.parts.map(p => p.content).join('\n');
 
   return (
     <div className={cn(
@@ -29,8 +30,8 @@ export const MessageItem: React.FC<MessageItemProps> = ({ message }) => {
         <p className="text-sm font-medium text-muted-foreground">
           {isAssistant ? "Assistant" : "You"}
         </p>
-        <div className="prose prose-slate dark:prose-invert max-w-none text-foreground">
-          {message.content}
+        <div className="prose prose-slate dark:prose-invert max-w-none text-foreground whitespace-pre-wrap">
+          {content}
           {message.status === 'streaming' && (
             <span className="inline-block w-1.5 h-4 ml-1 bg-primary animate-pulse align-middle" />
           )}
