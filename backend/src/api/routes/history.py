@@ -37,3 +37,40 @@ async def get_chat_history(conversation_id: str):
         print(f"DEBUG history.py: Exception getting history: {e}")
         # Re-raise standard exceptions so FastAPI returns a 500
         raise HTTPException(status_code=500, detail="Failed to retrieve history")
+
+
+@router.delete(
+    "/{conversation_id}", summary="Delete a conversation and terminate its workflow"
+)
+async def delete_conversation(conversation_id: str):
+    """
+    Terminates the durable Temporal workflow associated with the conversation.
+    """
+    try:
+        client = await TemporalClient.get_client()
+        workflow_id = f"chat-{conversation_id}"
+        handle = client.get_workflow_handle(workflow_id)
+
+        try:
+            await handle.terminate(reason="User deleted conversation from UI")
+            print(f"DEBUG history.py: Successfully terminated workflow {workflow_id}")
+            return {
+                "status": "success",
+                "message": f"Conversation {conversation_id} deleted",
+            }
+        except RPCError as e:
+            if (
+                getattr(e, "status", None) == StatusCode.NOT_FOUND
+                or "not found" in str(e).lower()
+            ):
+                print(
+                    f"DEBUG history.py: Workflow {workflow_id} not found during termination, ignoring."
+                )
+                return {
+                    "status": "success",
+                    "message": f"Conversation {conversation_id} was already gone",
+                }
+            raise
+    except Exception as e:
+        print(f"DEBUG history.py: Exception terminating workflow: {e}")
+        raise HTTPException(status_code=500, detail="Failed to delete conversation")

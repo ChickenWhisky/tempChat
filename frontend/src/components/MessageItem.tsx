@@ -9,8 +9,8 @@ interface MessageItemProps {
 }
 
 export const MessageItem: React.FC<MessageItemProps> = ({ message }) => {
-  const isAssistant = message.role === 'model-response';
-  const content = message.parts.map(p => p.content).join('\n');
+    const isAssistant = message.role === 'model-response';
+    const content = message.parts.map(part => part.content).join('\n');
 
   return (
     <div className={cn(
