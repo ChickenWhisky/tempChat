@@ -27,11 +27,6 @@ class ChatDeps:
 
 
 logger = logging.getLogger(__name__)
-
-
-logger = logging.getLogger(__name__)
-
-
 async def my_event_stream_handler(
     ctx: RunContext[ChatDeps], events: AsyncIterable[Any]
 ) -> None:
@@ -140,5 +135,5 @@ temporal_agent = TemporalAgent(
     agent,
     name="chat_agent",
     event_stream_handler=my_event_stream_handler,
-    activity_config=ActivityConfig(start_to_close_timeout=timedelta(minutes=15)),
+    activity_config=ActivityConfig(start_to_close_timeout=timedelta(minutes=2)),
 )
