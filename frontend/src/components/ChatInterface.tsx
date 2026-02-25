@@ -86,8 +86,9 @@ export const ChatInterface: React.FC = () => {
         let currentAssistantContent = "";
 
         try {
-            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-            await fetchEventSource(`${apiUrl}/api/chat`, {
+            const apiUrl = import.meta.env.VITE_API_URL || '';
+            const endpoint = apiUrl.endsWith('/api') ? `${apiUrl}/chat` : `${apiUrl}/api/chat`;
+            await fetchEventSource(endpoint, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

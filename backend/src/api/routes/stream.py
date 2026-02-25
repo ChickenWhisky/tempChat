@@ -6,6 +6,7 @@ from src.core.temporal import TemporalClient
 from src.core.config import settings
 from src.workflows.chat import ChatWorkflow
 from src.core.pubsub import pubsub_manager
+from temporalio.exceptions import WorkflowAlreadyStartedError
 
 router = APIRouter()
 
@@ -34,13 +35,21 @@ async def simulate_streaming_response(
         # Signal-With-Start: Starts the workflow if not running, AND signals it in one go.
         workflow_id = f"chat-{conversation_id}"
         print(f"DEBUG stream.py: Signal-With-Start for {workflow_id}")
-        await client.start_workflow(
-            ChatWorkflow.run,
-            id=workflow_id,
-            task_queue=settings.TEMPORAL_TASK_QUEUE,
-            start_signal="post_message",
-            start_signal_args=[message, msg_id],
-        )
+
+        try:
+            await client.start_workflow(
+                ChatWorkflow.run,
+                id=workflow_id,
+                task_queue=settings.TEMPORAL_TASK_QUEUE,
+                start_signal="post_message",
+                start_signal_args=[message, msg_id],
+            )
+        except WorkflowAlreadyStartedError:
+            print(
+                f"DEBUG stream.py: Workflow already running, signaling existing workflow {workflow_id}"
+            )
+            handle = client.get_workflow_handle(workflow_id)
+            await handle.signal(ChatWorkflow.post_message, message, msg_id)
 
         # Stream responses from the queue
         while True:
