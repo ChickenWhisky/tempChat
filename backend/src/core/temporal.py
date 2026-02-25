@@ -19,6 +19,4 @@ class TemporalClient:
 
     @classmethod
     async def close_client(cls):
-        # We don't explicitly need to close standard disconnected python clients like database pools,
-        # but leaving a hook for future TLS configs or cleanups.
         cls._client = None

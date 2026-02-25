@@ -1,8 +1,11 @@
+import logging
 from fastapi import APIRouter, HTTPException
 from grpc import StatusCode
 from src.core.temporal import TemporalClient
 from src.workflows.chat import ChatWorkflow
 from temporalio.service import RPCError
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -28,14 +31,10 @@ async def get_chat_history(conversation_id: str):
                 getattr(e, "status", None) == StatusCode.NOT_FOUND
                 or "not found" in str(e).lower()
             ):
-                print(
-                    f"DEBUG history.py: Workflow {workflow_id} not found, returning empty history."
-                )
                 return []
             raise
     except Exception as e:
-        print(f"DEBUG history.py: Exception getting history: {e}")
-        # Re-raise standard exceptions so FastAPI returns a 500
+        logger.error(f"Exception getting history for {conversation_id}: {e}")
         raise HTTPException(status_code=500, detail="Failed to retrieve history")
 
 
@@ -53,7 +52,7 @@ async def delete_conversation(conversation_id: str):
 
         try:
             await handle.terminate(reason="User deleted conversation from UI")
-            print(f"DEBUG history.py: Successfully terminated workflow {workflow_id}")
+            logger.info(f"Successfully terminated workflow {workflow_id}")
             return {
                 "status": "success",
                 "message": f"Conversation {conversation_id} deleted",
@@ -63,14 +62,11 @@ async def delete_conversation(conversation_id: str):
                 getattr(e, "status", None) == StatusCode.NOT_FOUND
                 or "not found" in str(e).lower()
             ):
-                print(
-                    f"DEBUG history.py: Workflow {workflow_id} not found during termination, ignoring."
-                )
                 return {
                     "status": "success",
                     "message": f"Conversation {conversation_id} was already gone",
                 }
             raise
     except Exception as e:
-        print(f"DEBUG history.py: Exception terminating workflow: {e}")
+        logger.error(f"Exception terminating workflow for {conversation_id}: {e}")
         raise HTTPException(status_code=500, detail="Failed to delete conversation")

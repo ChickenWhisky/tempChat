@@ -9,7 +9,7 @@ from pydantic_ai.providers.ollama import OllamaProvider
 
 from src.core.config import settings
 from src.core.pubsub import pubsub_manager
-from src.models.chat import TokenEvent, EndEvent
+from src.models.chat import StreamEvent
 import logging
 from temporalio.workflow import ActivityConfig
 from datetime import timedelta
@@ -27,6 +27,14 @@ class ChatDeps:
 
 
 logger = logging.getLogger(__name__)
+
+
+async def _publish_token(channel: str, content: str | None):
+    if content:
+        event = StreamEvent(type="token", message_id=channel, content=str(content))
+        await pubsub_manager.publish(channel, f"data: {event.model_dump_json()}\n\n")
+
+
 async def my_event_stream_handler(
     ctx: RunContext[ChatDeps], events: AsyncIterable[Any]
 ) -> None:
@@ -35,92 +43,52 @@ async def my_event_stream_handler(
     It receives the stream of parts and publishes them to our in-memory queue.
     """
     channel = ctx.deps.message_id
-    logger.warning(f"DEBUG llm_agent [{channel}]: STARTING STREAM HANDLER")
+    logger.info(f"[{channel}] Started AI response stream")
 
     async for event in events:
         event_name = type(event).__name__
-        logger.warning(
-            f"DEBUG llm_agent [{channel}]: Received event type: {event_name}"
-        )
 
         # 1. Handle PartStartEvent (May contain initial content for some providers)
         if event_name == "PartStartEvent":
             part = getattr(event, "part", None)
             if part:
-                logger.warning(
-                    f"DEBUG llm_agent [{channel}]: PartStart part type: {type(part).__name__}"
-                )
-                content = None
-                if hasattr(part, "content"):
-                    content = part.content
-                elif hasattr(part, "text"):
-                    content = part.text
-
-                if content:
-                    logger.warning(
-                        f"DEBUG llm_agent [{channel}]: Found content in PartStart: {str(content)[:20]}..."
-                    )
-                    token_event = TokenEvent(message_id=channel, content=str(content))
-                    await pubsub_manager.publish(
-                        channel, f"data: {token_event.model_dump_json()}\n\n"
-                    )
+                content = getattr(part, "content", None) or getattr(part, "text", None)
+                await _publish_token(channel, content)
 
         # 2. Handle PartDeltaEvent (Common for streaming)
         elif event_name == "PartDeltaEvent":
             delta = getattr(event, "delta", None)
             content = None
-            if hasattr(delta, "content_chunk"):
-                content = delta.content_chunk
-            elif hasattr(delta, "content_delta"):
-                content = delta.content_delta
-            elif hasattr(delta, "text"):
-                content = delta.text
-            elif hasattr(delta, "content"):
-                content = delta.content
-            elif isinstance(delta, str):
-                content = delta
+            if delta is not None:
+                if hasattr(delta, "content_chunk"):
+                    content = delta.content_chunk
+                elif hasattr(delta, "content_delta"):
+                    content = delta.content_delta
+                elif hasattr(delta, "text"):
+                    content = delta.text
+                elif hasattr(delta, "content"):
+                    content = delta.content
+                elif isinstance(delta, str):
+                    content = delta
 
-            if content:
-                logger.warning(
-                    f"DEBUG llm_agent [{channel}]: Found token in Delta: {str(content)[:20]}..."
-                )
-                token_event = TokenEvent(message_id=channel, content=str(content))
-                await pubsub_manager.publish(
-                    channel, f"data: {token_event.model_dump_json()}\n\n"
-                )
+            await _publish_token(channel, content)
 
         # 3. Handle ModelResponse (Check parts)
         elif hasattr(event, "parts"):
-            parts = getattr(event, "parts", [])
-            for i, part in enumerate(parts):
+            for part in getattr(event, "parts", []):
                 content = getattr(part, "content", None) or getattr(part, "text", None)
-                if content:
-                    logger.warning(
-                        f"DEBUG llm_agent [{channel}]: Found content in ModelResponse part {i}: {str(content)[:20]}..."
-                    )
-                    token_event = TokenEvent(message_id=channel, content=str(content))
-                    await pubsub_manager.publish(
-                        channel, f"data: {token_event.model_dump_json()}\n\n"
-                    )
+                await _publish_token(channel, content)
 
         # 4. Last resort content check on the event itself
         elif hasattr(event, "content") and isinstance(
             getattr(event, "content", None), str
         ):
-            content = getattr(event, "content")
-            if content:
-                logger.warning(
-                    f"DEBUG llm_agent [{channel}]: Found token in event attr: {str(content)[:20]}..."
-                )
-                token_event = TokenEvent(message_id=channel, content=content)
-                await pubsub_manager.publish(
-                    channel, f"data: {token_event.model_dump_json()}\n\n"
-                )
+            await _publish_token(channel, getattr(event, "content"))
 
     # 5. Signal the end of the stream for this turn
-
-    end_event = EndEvent(message_id=channel)
+    end_event = StreamEvent(type="end", message_id=channel)
     await pubsub_manager.publish(channel, f"data: {end_event.model_dump_json()}\n\n")
+    logger.info(f"[{channel}] Finished AI response stream")
 
 
 # Upgrade the agent to expect ChatDeps
