@@ -28,7 +28,10 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ conversationId }) => {
                             validatedMessages.pop();
                         }
                     } else {
-                        validatedMessages.push(message);
+                        const filteredParts = (message.parts || []).filter(p => p.part_kind !== 'system-prompt');
+                        if (filteredParts.length > 0) {
+                            validatedMessages.push({ ...message, parts: filteredParts });
+                        }
                     }
                 }
                 
@@ -53,7 +56,14 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ conversationId }) => {
         if (savedMessagesJson) {
             try {
                 const parsedMessages = JSON.parse(savedMessagesJson) as ChatMessage[];
-                setMessages(parsedMessages);
+                const filteredMessages: ChatMessage[] = [];
+                for (const message of parsedMessages) {
+                    const filteredParts = (message.parts || []).filter(p => p.part_kind !== 'system-prompt');
+                    if (filteredParts.length > 0) {
+                        filteredMessages.push({ ...message, parts: filteredParts });
+                    }
+                }
+                setMessages(filteredMessages);
             } catch (error) {
                 setMessages([]);
             }
@@ -92,15 +102,24 @@ export const ChatArea: React.FC<ChatAreaProps> = ({ conversationId }) => {
                 
                 const data = await response.json();
                 if (Array.isArray(data) && data.length > 0) {
-                    const transformedMessages: ChatMessage[] = data.map((msg: any) => ({
-                        id: crypto.randomUUID(), 
-                        role: msg.kind === 'request' ? 'model-request' : 'model-response',
-                        parts: (msg.parts || []).map((part: any) => ({
-                            part_kind: part.part_kind,
-                            content: typeof part.content === 'string' ? part.content : JSON.stringify(part.content)
-                        })),
-                        status: 'complete' as const
-                    }));
+                    const transformedMessages: ChatMessage[] = [];
+                    for (const msg of data) {
+                        const filteredParts = (msg.parts || [])
+                            .filter((part: any) => part.part_kind !== 'system-prompt')
+                            .map((part: any) => ({
+                                part_kind: part.part_kind,
+                                content: typeof part.content === 'string' ? part.content : JSON.stringify(part.content)
+                            }));
+                        
+                        if (filteredParts.length > 0) {
+                            transformedMessages.push({
+                                id: crypto.randomUUID(), 
+                                role: msg.kind === 'request' ? 'model-request' : 'model-response',
+                                parts: filteredParts,
+                                status: 'complete' as const
+                            });
+                        }
+                    }
                     
                     setMessages(transformedMessages);
                 }
