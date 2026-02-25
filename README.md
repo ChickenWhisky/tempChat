@@ -1,6 +1,6 @@
 # Streaming AI Chatbot with PydanticAI & Temporal
 
-Hey there! This is a full-stack AI chatbot I built to tackle a really interesting engineering challenge: orchestrating LLM interactions using PydanticAI while relying on Temporal for durable execution, long-lived conversation state, and resilience. I wanted to see if I could combine real-time token-by-token streaming with the strict deterministic requirements of a workflow engine.
+A simple AI chatbot I threw together to test out PydanticAI real-time streaming while using Temporal to keep track of the conversation history reliably without a database.
 
 ## 🚀 Quick Start
 
