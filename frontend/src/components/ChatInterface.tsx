@@ -98,6 +98,7 @@ export const ChatInterface: React.FC = () => {
                     history: history
                 }),
                 onmessage(ev) {
+                    console.log("DEBUG ChatInterface: Received event:", ev.data);
                     const data: StreamEvent = JSON.parse(ev.data);
 
                     if (data.type === 'start') {
