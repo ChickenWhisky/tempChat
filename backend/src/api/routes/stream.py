@@ -8,11 +8,16 @@ from src.core.config import settings
 from src.workflows.chat import ChatWorkflow
 from src.core.pubsub import pubsub_manager
 from temporalio.exceptions import WorkflowAlreadyStartedError
+from pydantic_ai.messages import ModelMessage
 
 router = APIRouter()
 
 
-async def simulate_streaming_response(message: str, message_id: str | None = None):
+async def simulate_streaming_response(
+    message: str,
+    message_id: str | None = None,
+    history: list[ModelMessage] | None = None,
+):
     """
     Spawns the durable Temporal workflow and then simulates the SSE streaming
     format the frontend expects by listening to the PubSub queue.
@@ -31,7 +36,11 @@ async def simulate_streaming_response(message: str, message_id: str | None = Non
         try:
             workflow_handle = await client.start_workflow(
                 ChatWorkflow.run,
-                args=[message, msg_id, None],  # prompt, message_id, message_history
+                args=[
+                    message,
+                    msg_id,
+                    history,
+                ],  # prompt, message_id, message_history
                 id=f"chat-{msg_id}",
                 task_queue=settings.TEMPORAL_TASK_QUEUE,
             )
@@ -104,6 +113,8 @@ async def chat_stream(request: ChatRequest):
     response using Server-Sent Events (SSE) formatting.
     """
     return StreamingResponse(
-        simulate_streaming_response(request.message, request.message_id),
+        simulate_streaming_response(
+            request.message, request.message_id, request.history
+        ),
         media_type="text/event-stream",
     )
