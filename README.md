@@ -60,32 +60,32 @@ graph TD
 ---
 
 ## 🔄 Request Lifecycle
-
+```mermaid
 sequenceDiagram
     participant User
-    participant Frontend as React
-    participant API as FastAPI
-    participant Redis as Redis PubSub
-    participant Temporal as Temporal Worker
-    participant LLM as Ollama / PydanticAI
+    participant Frontend
+    participant API
+    participant Redis
+    participant Temporal
+    participant LLM
 
     User->>Frontend: Sends Message
     Frontend->>API: POST /api/chat (SSE Stream Start)
-    API->>Temporal: SignalWithStart Workflow (chat_workflow)
+    API->>Temporal: SignalWithStart Workflow
     API->>Redis: Subscribe to Session Channel
     
-    Temporal-->>Temporal: Append message to history
-    Temporal->>LLM: temporal_agent.run() (Auto-spawns Activities)
+    Note over Temporal: Append message to history
+    Temporal->>LLM: temporal_agent.run()
     
     loop event_stream_handler execution
-        LLM-->>LLM: Yield Event/Token
+        Note over LLM: Yield Event/Token
         LLM->>Redis: Publish Token to Session Channel
         Redis-->>API: Receive Token
         API-->>Frontend: SSE Stream Token
     end
     
     LLM-->>Temporal: Stream finishes, returns AgentRunResult
-    Temporal->>Temporal: Save final complete response to state
+    Note over Temporal: Save final complete response to state
     API-->>Frontend: SSE Stream End
 ```
 
