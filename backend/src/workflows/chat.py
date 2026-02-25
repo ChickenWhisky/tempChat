@@ -25,6 +25,10 @@ class ChatWorkflow(PydanticAIWorkflow):
         self._new_message = message
         self._message_id = message_id
 
+    @workflow.query
+    def get_history(self) -> list[ModelMessage]:
+        return self._history
+
     @workflow.run
     async def run(self) -> None:
         """

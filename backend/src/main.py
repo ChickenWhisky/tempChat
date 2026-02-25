@@ -4,7 +4,7 @@ import asyncio
 from temporalio.worker import Worker
 from src.core.config import settings
 from src.core.temporal import TemporalClient
-from src.api.routes import stream
+from src.api.routes import stream, history
 from src.workflows.chat import ChatWorkflow
 from src.core.pubsub import pubsub_manager
 
@@ -45,6 +45,9 @@ app = FastAPI(
 
 # Include routers
 app.include_router(stream.router, prefix=settings.API_V1_STR, tags=["chat"])
+app.include_router(
+    history.router, prefix=f"{settings.API_V1_STR}/chat", tags=["chat_history"]
+)
 
 
 @app.get("/health", tags=["health"])

@@ -67,6 +67,48 @@ export const ChatInterface: React.FC = () => {
         return newId;
     });
 
+    // Fetch authoritative history from the backend durable workflow
+    useEffect(() => {
+        const fetchHistory = async () => {
+            try {
+                const apiUrl = import.meta.env.VITE_API_URL || '';
+                const endpoint = apiUrl.endsWith('/api') 
+                    ? `${apiUrl}/chat/${conversationId}/history` 
+                    : `${apiUrl}/api/chat/${conversationId}/history`;
+                
+                const response = await fetch(endpoint);
+                if (!response.ok) {
+                    // Usually 404 means workflow hasn't started yet, which is fine
+                    return;
+                }
+                
+                const data = await response.json();
+                if (Array.isArray(data) && data.length > 0) {
+                    const transformedMessages: ChatMessage[] = data.map((msg: any) => ({
+                        // Generate a clean ID for UI rendering. 
+                        // Real messages have an ID, but PydanticAI messages might not have this exposed easily at this level.
+                        id: crypto.randomUUID(), 
+                        role: msg.kind === 'request' ? 'model-request' : 'model-response',
+                        parts: (msg.parts || []).map((p: any) => ({
+                            part_kind: p.part_kind,
+                            content: typeof p.content === 'string' ? p.content : JSON.stringify(p.content)
+                        })),
+                        status: 'complete' as const
+                    }));
+                    
+                    // We only want to set messages from the backend if there are any.
+                    // This overwrites the optimistic local storage load with the true state.
+                    setMessages(transformedMessages);
+                    console.log("DEBUG ChatInterface: Loaded history from durable workflow", transformedMessages);
+                }
+            } catch (err) {
+                console.error("Failed to fetch durable chat history:", err);
+            }
+        };
+
+        fetchHistory();
+    }, [conversationId]);
+
     const handleSendMessage = async () => {
         if (!input.trim() || isLoading) return;
 
