@@ -63,6 +63,7 @@ export const ChatInterface: React.FC = () => {
         if (!input.trim() || isLoading) return;
 
         const userMsgId = crypto.randomUUID();
+        const assistantMsgId = crypto.randomUUID();
         const userMessage: ChatMessage = {
             id: userMsgId,
             role: 'user',
@@ -83,17 +84,20 @@ export const ChatInterface: React.FC = () => {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ message: input }),
+                body: JSON.stringify({ message: input, message_id: assistantMsgId }),
                 onmessage(ev) {
                     const data: StreamEvent = JSON.parse(ev.data);
 
                     if (data.type === 'start') {
-                        setMessages(prev => [...prev, {
-                            id: data.message_id,
-                            role: 'assistant',
-                            content: '',
-                            status: 'streaming'
-                        }]);
+                        setMessages(prev => {
+                            if (prev.some(m => m.id === data.message_id)) return prev;
+                            return [...prev, {
+                                id: data.message_id,
+                                role: 'assistant',
+                                content: '',
+                                status: 'streaming'
+                            }];
+                        });
                     } else if (data.type === 'token') {
                         currentAssistantContent += data.content;
                         setMessages(prev => prev.map(m => 

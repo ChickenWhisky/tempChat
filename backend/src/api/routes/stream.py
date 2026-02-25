@@ -7,16 +7,17 @@ from src.core.temporal import TemporalClient
 from src.core.config import settings
 from src.workflows.chat import ChatWorkflow
 from src.core.pubsub import pubsub_manager
+from temporalio.exceptions import WorkflowAlreadyStartedError
 
 router = APIRouter()
 
 
-async def simulate_streaming_response(message: str):
+async def simulate_streaming_response(message: str, message_id: str | None = None):
     """
     Spawns the durable Temporal workflow and then simulates the SSE streaming
     format the frontend expects by listening to the PubSub queue.
     """
-    msg_id = str(uuid.uuid4())
+    msg_id = message_id or str(uuid.uuid4())
     queue = pubsub_manager.subscribe(msg_id)
 
     # 1. Send start event
@@ -27,12 +28,18 @@ async def simulate_streaming_response(message: str):
         client = await TemporalClient.get_client()
 
         # Start the workflow durably (in the background)
-        workflow_handle = await client.start_workflow(
-            ChatWorkflow.run,
-            args=[message, msg_id, None],  # prompt, message_id, message_history
-            id=f"chat-{msg_id}",
-            task_queue=settings.TEMPORAL_TASK_QUEUE,
-        )
+        try:
+            workflow_handle = await client.start_workflow(
+                ChatWorkflow.run,
+                args=[message, msg_id, None],  # prompt, message_id, message_history
+                id=f"chat-{msg_id}",
+                task_queue=settings.TEMPORAL_TASK_QUEUE,
+            )
+        except WorkflowAlreadyStartedError:
+            print(
+                f"DEBUG stream.py: workflow chat-{msg_id} already started, attaching to stream."
+            )
+            workflow_handle = client.get_workflow_handle(f"chat-{msg_id}")
 
         # Stream responses from the queue until the workflow completes
         workflow_task = asyncio.create_task(workflow_handle.result())
@@ -97,5 +104,6 @@ async def chat_stream(request: ChatRequest):
     response using Server-Sent Events (SSE) formatting.
     """
     return StreamingResponse(
-        simulate_streaming_response(request.message), media_type="text/event-stream"
+        simulate_streaming_response(request.message, request.message_id),
+        media_type="text/event-stream",
     )
