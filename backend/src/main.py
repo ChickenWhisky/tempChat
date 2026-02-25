@@ -6,11 +6,13 @@ from src.core.config import settings
 from src.core.temporal import TemporalClient
 from src.api.routes import stream
 from src.workflows.chat import ChatWorkflow
+from src.core.pubsub import pubsub_manager
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Connect to Temporal on startup
+    # Connect to Temporal and Redis on startup
+    await pubsub_manager.connect()
     client = await TemporalClient.get_client()
 
     # Run a Temporal Worker directly inside the FastAPI app
@@ -32,6 +34,7 @@ async def lifespan(app: FastAPI):
     except asyncio.CancelledError:
         pass
     await TemporalClient.close_client()
+    await pubsub_manager.disconnect()
 
 
 app = FastAPI(

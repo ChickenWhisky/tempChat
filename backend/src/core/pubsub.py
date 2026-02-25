@@ -1,36 +1,43 @@
-import asyncio
-from typing import Dict, List
+import redis.asyncio as redis
+from src.core.config import settings
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class PubSubManager:
     """
-    A simple in-memory Publisher/Subscriber to bridge Temporal Activities (running in the same process)
+    A Redis-backed Publisher/Subscriber to bridge Temporal Activities (running on different workers/threads)
     with the FastAPI SSE endpoints.
-
-    In a multi-worker production environment, this should be replaced by Redis PubSub.
     """
 
     def __init__(self):
-        self._channels: Dict[str, List[asyncio.Queue[str]]] = {}
+        self._redis: redis.Redis | None = None
 
-    def subscribe(self, channel: str) -> asyncio.Queue[str]:
-        if channel not in self._channels:
-            self._channels[channel] = []
-        queue = asyncio.Queue()
-        self._channels[channel].append(queue)
-        return queue
+    async def connect(self):
+        self._redis = redis.from_url(settings.REDIS_URL, decode_responses=True)
+        logger.info(f"Connected to Redis PubSub at {settings.REDIS_URL}")
 
-    def unsubscribe(self, channel: str, queue: asyncio.Queue[str]):
-        if channel in self._channels:
-            if queue in self._channels[channel]:
-                self._channels[channel].remove(queue)
-            if not self._channels[channel]:
-                del self._channels[channel]
+    async def disconnect(self):
+        if self._redis:
+            await self._redis.aclose()
+            logger.info("Disconnected from Redis PubSub")
+
+    async def subscribe(self, channel: str) -> redis.client.PubSub:
+        if not self._redis:
+            raise RuntimeError("Redis client is not connected")
+
+        pubsub = self._redis.pubsub()
+        await pubsub.subscribe(channel)
+        logger.info(f"Subscribed to Redis channel: {channel}")
+        return pubsub
 
     async def publish(self, channel: str, message: str):
-        if channel in self._channels:
-            for queue in self._channels[channel]:
-                await queue.put(message)
+        if not self._redis:
+            logger.error("Publish failed: Redis client is not connected")
+            return
+
+        await self._redis.publish(channel, message)
 
 
 # Global singleton

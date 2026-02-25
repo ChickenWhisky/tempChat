@@ -21,7 +21,7 @@ async def simulate_streaming_response(
     format the frontend expects by listening to the PubSub queue.
     """
     msg_id = message_id or str(uuid.uuid4())
-    queue = pubsub_manager.subscribe(msg_id)
+    pubsub = await pubsub_manager.subscribe(msg_id)
 
     # 1. Send start event
     start_event = StartEvent(message_id=msg_id)
@@ -50,23 +50,29 @@ async def simulate_streaming_response(
             )
             handle = client.get_workflow_handle(workflow_id)
             await handle.signal(ChatWorkflow.post_message, message, msg_id)
+            print(f"DEBUG stream.py: Signal sent successfully for {msg_id}")
 
-        # Stream responses from the queue
-        while True:
-            chunk = await queue.get()
-            print(f"DEBUG stream.py: yielding chunk: {chunk[:30]}...")
-            yield chunk
+        # Stream responses from the pubsub
+        print(f"DEBUG stream.py: Entering pubsub listen loop for {msg_id}")
+        async for message in pubsub.listen():
+            print(f"DEBUG stream.py: Received raw pubsub message: {message}")
+            if message["type"] == "message":
+                chunk = message["data"]
+                print(
+                    f"DEBUG stream.py: yielding chunk from Redis channel {msg_id}: {chunk[:30]}..."
+                )
+                yield chunk
 
-            # A turn is finished when we see an 'end' event in the stream
-            if '"type":"end"' in chunk or '"type": "end"' in chunk:
-                break
+                # A turn is finished when we see an 'end' event in the stream
+                if '"type":"end"' in chunk or '"type": "end"' in chunk:
+                    break
 
     except Exception as e:
         print(f"DEBUG stream.py: Exception in stream: {e}")
         error_event = ErrorEvent(message_id=msg_id, error=str(e))
         yield f"data: {error_event.model_dump_json()}\n\n"
     finally:
-        pubsub_manager.unsubscribe(msg_id, queue)
+        await pubsub.unsubscribe(msg_id)
 
 
 @router.post("/chat", summary="Stream a chat response")

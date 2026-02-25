@@ -11,6 +11,8 @@ from src.core.config import settings
 from src.core.pubsub import pubsub_manager
 from src.models.chat import TokenEvent, EndEvent
 import logging
+from temporalio.workflow import ActivityConfig
+from datetime import timedelta
 
 ollama_model = OpenAIChatModel(
     model_name=settings.OLLAMA_MODEL,
@@ -22,6 +24,9 @@ ollama_model = OpenAIChatModel(
 class ChatDeps:
     message_id: str
     message_history: list[ModelMessage] | None = None
+
+
+logger = logging.getLogger(__name__)
 
 
 logger = logging.getLogger(__name__)
@@ -132,5 +137,8 @@ agent = Agent(
 
 # Export the TemporalAgent
 temporal_agent = TemporalAgent(
-    agent, name="chat_agent", event_stream_handler=my_event_stream_handler
+    agent,
+    name="chat_agent",
+    event_stream_handler=my_event_stream_handler,
+    activity_config=ActivityConfig(start_to_close_timeout=timedelta(minutes=15)),
 )

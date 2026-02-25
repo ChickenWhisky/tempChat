@@ -8,11 +8,12 @@ class Settings(BaseSettings):
     OLLAMA_BASE_URL: str = "http://ollama:11434/v1"
     OLLAMA_MODEL: str = "llama3.2"
 
-    # Temporal Settings
+    # Temporal configs
     TEMPORAL_HOST: str = "temporal:7233"
     TEMPORAL_TASK_QUEUE: str = "chat-task-queue"
 
-    # Temporal Settings
+    # Redis configs for PubSub
+    REDIS_URL: str = "redis://temporal-redis:6379/0"
 
     class Config:
         case_sensitive = True

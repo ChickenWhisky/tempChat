@@ -3,6 +3,8 @@ services:
     build: ./backend
     ports:
       - "8000:8000"
+    # volumes:
+    #   - ./backend/src:/app/src
     # Not required its already defined in the backend
     # environment:
     #   - CORS_ORIGINS=["http://localhost:5173","http://localhost"]
@@ -35,6 +37,13 @@ services:
     networks:
       - chatbot-network
 
+  redis:
+    image: redis:7-alpine
+    container_name: temporal-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - chatbot-network
   postgresql:
     image: postgres:14
     container_name: temporal-postgresql
