@@ -11,6 +11,10 @@ from src.core.pubsub import pubsub_manager
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    """
+    Handles application startup and shutdown events, connecting to Temporal/Redis
+    and running the background worker.
+    """
     # Connect to Temporal and Redis on startup
     await pubsub_manager.connect()
     client = await TemporalClient.get_client()
@@ -52,4 +56,7 @@ app.include_router(
 
 @app.get("/health", tags=["health"])
 def health_check():
+    """
+    Simple health check endpoint to verify the service is running.
+    """
     return {"status": "ok"}

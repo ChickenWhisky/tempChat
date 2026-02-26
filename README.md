@@ -12,6 +12,7 @@ A simple AI chatbot I threw together to test out PydanticAI real-time streaming 
    > If you have an NVIDIA GPU and the NVIDIA Container Toolkit installed, run `docker-compose --profile gpu up -d` to enable hardware acceleration for the local LLM!
 
 2. Navigate to `http://localhost:5173` to use the chatbot.
+3. Visit the **Temporal UI** at `http://localhost:8080` to inspect the underlying workflows and history.
 
 ---
 
@@ -64,40 +65,45 @@ graph TD
 sequenceDiagram
     participant User
     participant Frontend
-    participant API
-    participant Redis
-    participant Temporal
-    participant LLM
+    participant API (FastAPI)
+    participant Redis (PubSub)
+    participant TServer (Temporal)
+    participant Worker (Temporal Activity)
+    participant LLM (Ollama)
 
     User->>Frontend: Sends Message
-    Frontend->>API: POST /api/chat (SSE Stream Start)
-    API->>Temporal: SignalWithStart Workflow
-    API->>Redis: Subscribe to Session Channel
+    Frontend->>API (FastAPI): POST /api/chat (SSE Stream Start)
+    API (FastAPI)->>TServer (Temporal): SignalWithStart Workflow
+    API (FastAPI)->>Redis (PubSub): Subscribe to Session Channel
     
-    Note over Temporal: Append message to history
-    Temporal->>LLM: temporal_agent.run()
+    TServer (Temporal)->>Worker (Temporal Activity): Schedule "chat_agent" Activity
     
-    loop event_stream_handler execution
-        Note over LLM: Yield Event/Token
-        LLM->>Redis: Publish Token to Session Channel
-        Redis-->>API: Receive Token
-        API-->>Frontend: SSE Stream Token
+    Note over Worker (Temporal Activity): Activity starts LLM call
+    Worker (Temporal Activity)->>LLM (Ollama): Request completion
+    
+    loop Token Streaming
+        LLM (Ollama)-->>Worker (Temporal Activity): Yield Token Chunk
+        Note over Worker (Temporal Activity): event_stream_handler caught chunk
+        Worker (Temporal Activity)->>Redis (PubSub): Publish Token
+        Redis (PubSub)-->>API (FastAPI): Push to subscriber
+        API (FastAPI)-->>Frontend: SSE Stream Token
     end
     
-    LLM-->>Temporal: Stream finishes, returns AgentRunResult
-    Note over Temporal: Save final complete response to state
-    API-->>Frontend: SSE Stream End
+    LLM (Ollama)-->>Worker (Temporal Activity): End of stream
+    Worker (Temporal Activity)->>Redis (PubSub): Publish "end" event
+    Redis (PubSub)-->>API (FastAPI): Push "end"
+    API (FastAPI)-->>Frontend: Close SSE Connection
+    Worker (Temporal Activity)-->>TServer (Temporal): Activity completes
+    Note over TServer (Temporal): Save final response to history
 ```
 
-The core challenge I set out to solve was cleanly separating the **durable execution** of the workflow from the **ephemeral streaming** of HTTP tokens. Temporal's deterministic replay constraints usually clash with real-time UI updates, so here's how I designed the system:
+The core challenge I set out to solve was cleanly separating the **durable execution** of the workflow from the **ephemeral streaming** of tokens. Because the Temporal Activity can run on any worker in the network, we need a "shared memory" bridge to get those tokens back to the specific API server the user is connected to.
 
-- **Frontend (React/Vite)**: I built this to manage multiple distinct conversation sessions. It uses `@microsoft/fetch-event-source` to cleanly consume Server-Sent Events (SSE).
-- **Backend (FastAPI)**: I exposed a few clear REST endpoints for history retrieval and SSE for streaming to keep the API surface incredibly small but functional.
-- **Workflow Engine (Temporal)**: 
-  - I used the `Signal-With-Start` pattern to maintain a **long-lived workflow** per conversation session. 
-  - I decided to make the workflow's durable state the single source of truth for all conversation history. It feels clean and leverages Temporal's strengths.
-- **LLM Orchestration (PydanticAI `TemporalAgent`)**: I used PydanticAI's native `TemporalAgent` wrapper. Instead of writing custom Temporal Activities manually, I simply call `temporal_agent.run()` directly inside my Workflow. The `TemporalAgent`offloads all the network I/O operations (like model generation and tool calling) into securely orchestrated Temporal Activities.
-- **Streaming Hand-off (Redis PubSub)**: PydanticAI's `TemporalAgent` allows us to define an `event_stream_handler`. As my agent yields events, this handler (which `TemporalAgent` automatically runs inside an Activity) pushes the tokens to a Redis PubSub channel. My FastAPI SSE route subscribes to this channel and streams the tokens to the client.
+- **Frontend (React/Vite)**: Manages distinct conversation sessions and consumes Server-Sent Events (SSE) via `@microsoft/fetch-event-source`.
+- **Backend (FastAPI)**: Subscribes to Redis and parks the request in an `async for` loop, waiting for tokens to arrive.
+- **Workflow Engine (Temporal)**: Uses `Signal-With-Start` to maintain a long-lived, stateful "brain" per conversation ID.
+- **LLM Orchestration (PydanticAI `TemporalAgent`)**: Offloads LLM logic to a **Temporal Activity**. This ensures that even if the network or the LLM call fails, Temporal handles the retries and state management.
+- **Streaming Bridge (Redis PubSub)**: This is the critical piece. The `event_stream_handler` (running on a **Temporal Worker**) shouts tokens into Redis. The **API Server** (listening to Redis) hears them and forwards them to the User. This allows the system to scale horizontally across multiple API servers and Worker pods.
 
 ---
 

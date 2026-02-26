@@ -24,7 +24,7 @@ class PubSubManager:
             await self._redis.aclose()
             logger.info("Disconnected from Redis PubSub")
 
-    async def subscribe(self, channel: str) -> PubSub:    
+    async def subscribe(self, channel: str) -> PubSub:
         if not self._redis:
             raise RuntimeError("Redis client is not connected")
 

@@ -30,6 +30,9 @@ logger = logging.getLogger(__name__)
 
 
 async def _publish_token(channel: str, content: str | None):
+    """
+    Sub-activity helper to publish a single token/chunk to the PubSub channel.
+    """
     if content:
         event = StreamEvent(type="token", message_id=channel, content=str(content))
         await pubsub_manager.publish(channel, f"data: {event.model_dump_json()}\n\n")

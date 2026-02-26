@@ -91,6 +91,7 @@ I set out to build a streaming AI chatbot with the following core objectives in 
 **My Goal**: Mature the system from an MVP architecture to something horizontally scalable and production-aware.
 **What I Implemented**:
 - [x] Replaced my local in-memory Python `asyncio.Queue` PubSub with a fully-fledged Redis PubSub architecture.
+- [x] **Why this matters**: An in-memory queue binds the user's connection to one specific worker. Redis decouples them—tokens can be published by any Temporal Worker and consumed by any FastAPI server.
 - [x] Cleaned up a ton of my events by consolidating the stream event types into a single `StreamEvent` model and refining my logging statements across the entire backend.
 
 ---

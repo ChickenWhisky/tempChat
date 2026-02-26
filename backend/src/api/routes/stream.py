@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-async def simulate_streaming_response(
+async def handle_chat_stream(
     message: str,
     conversation_id: str,
     message_id: str | None = None,
@@ -26,7 +26,6 @@ async def simulate_streaming_response(
     msg_id = message_id or str(uuid.uuid4())
     pubsub = await pubsub_manager.subscribe(msg_id)
 
-    # 1. Send start event
     start_event = StreamEvent(type="start", message_id=msg_id)
     yield f"data: {start_event.model_dump_json()}\n\n"
 
@@ -74,7 +73,7 @@ async def chat_stream(request: ChatRequest):
     response using Server-Sent Events (SSE) formatting.
     """
     return StreamingResponse(
-        simulate_streaming_response(
+        handle_chat_stream(
             request.message,
             request.conversation_id,
             request.message_id,

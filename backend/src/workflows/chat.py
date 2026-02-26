@@ -13,17 +13,26 @@ class ChatWorkflow(PydanticAIWorkflow):
     __pydantic_ai_agents__ = [temporal_agent]
 
     def __init__(self) -> None:
+        """
+        Initializes the workflow with empty history and no pending messages.
+        """
         self._history: list[ModelMessage] = []
         self._new_message: str | None = None
         self._message_id: str | None = None
 
     @workflow.signal
     def post_message(self, message: str, message_id: str) -> None:
+        """
+        Signal to post a new message to the conversation.
+        """
         self._new_message = message
         self._message_id = message_id
 
     @workflow.query
     def get_history(self) -> list[ModelMessage]:
+        """
+        Query to retrieve the current chat history.
+        """
         return self._history
 
     @workflow.run

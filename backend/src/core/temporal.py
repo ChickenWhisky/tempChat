@@ -9,6 +9,9 @@ class TemporalClient:
 
     @classmethod
     async def get_client(cls) -> Client:
+        """
+        Returns a singleton instance of the Temporal client, connecting if necessary.
+        """
         if cls._client is None:
             # Connect to Temporal server
 
@@ -19,4 +22,7 @@ class TemporalClient:
 
     @classmethod
     async def close_client(cls):
+        """
+        Closes/resets the singleton Temporal client.
+        """
         cls._client = None
